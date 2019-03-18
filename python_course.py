@@ -1,40 +1,64 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Tue Mar 12 21:29:16 2019
-
-@author: An
-"""
-
 import socket
-#导入套接字模块
+import os
+import hashlib
 
-s = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
-# - socket.AF_INET：IPV4
-# - socket.STREAM：TCP
-# - socket.DGRAM：UDP
+client = socket.socket()  # 生成socket连接对象
 
-s.bind(('',25555))
-#绑定套接字有效地址和端口
-#''空位任何地址 本地的127.0.0.1 和局域网还有自己真实的ip
-print('[+] Server Open.....')
+ip_port =("localhost", 6969)  # 地址和端口号
+
+client.connect(ip_port)  # 连接
+
+print("服务器已连接")
 
 while True:
-    try:
-        data,c_addr = s.recvfrom(1024)
-        #一次性接受1024bytes的数据 ，返回一个元组，其中有数据和地址
-        #UDP不需要构成连接，直接发送即可
-        mess = "已经收到请继续"
-        #data = data+ mess
-        print('from:',c_addr)
-        #c_addr是一个地址,发送消息的客户端的IP和端口的二元组
-        print('say：%s'%(data.decode('utf-8')))
-        s.sendto(mess.encode('utf-8'),c_addr)
-        msg = data.decode('utf-8')
-        s.sendto(msg.encode('utf-8'),c_addr)
-        #发送信息，其中有两个参数，一个是信息，一个是目标地址和端口
-        
-    except KeyboardInterrupt:
-        break
+    content = input(">>")
 
-print('[+] Server Close......')
-s.close
+    if len(content)==0: continue  # 如果传入空字符会阻塞
+
+    if content.startswith("get"):
+        client.send(content.encode("utf-8"))  # 传送和接收都是bytes类型
+
+        # 1.先接收长度，建议8192
+        server_response = client.recv(1024)
+        file_size = int(server_response.decode("utf-8"))
+
+        print("接收到的大小：", file_size)
+
+        # 2.接收文件内容
+        client.send("准备好接收".encode("utf-8"))  # 接收确认
+        filename = "new" + content.split(" ")[1]
+
+        f = open(filename, "wb")
+        received_size = 0
+        m = hashlib.md5()
+
+        while received_size < file_size:
+            size = 0  # 准确接收数据大小，解决粘包
+            if file_size - received_size > 1024: # 多次接收
+                size = 1024
+            else:  # 最后一次接收完毕
+                size = file_size - received_size
+
+            data = client.recv(size)  # 多次接收内容，接收大数据
+            data_len = len(data)
+            received_size += data_len
+            print("已接收：", int(received_size/file_size*100), "%")
+
+            m.update(data)
+            f.write(data)
+
+        f.close()
+
+        print("实际接收的大小:", received_size)  # 解码
+
+        # 3.md5值校验
+        md5_sever = client.recv(1024).decode("utf-8")
+        md5_client = m.hexdigest()
+        print("服务器发来的md5:", md5_sever)
+        print("接收文件的md5:", md5_client)
+        if md5_sever == md5_client:
+            print("MD5值校验成功")
+        else:
+            print("MD5值校验失败")
+
+client.close()
