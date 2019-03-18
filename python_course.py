@@ -1,53 +1,34 @@
 # -*- coding: utf-8 -*-
 """
-Created on Mon Mar 18 12:43:37 2019
+Created on Tue Mar 12 21:20:24 2019
 
 @author: An
 """
+import socket
+#导入套接字模块
 
-def calculate(annual_salary,portion_saved):       #calculate the current_savings after 3 years
-    semi_annual_raise = 0.07
-    current_savings = 0
-    monthly_salary = annual_salary/12
-    r = 0.04    #rate of return on investment(for a year)
-    RIO = 0     #the money you can get from current savings
+c = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
+# - socket.AF_INET：IPV4
+# - socket.STREAM：TCP
+# - socket.DGRAM：UDP
 
-    for monthly_counter in range(1,37):    #monthly_counter = 0    #counter the month
-        RIO = current_savings * r / 12
-        current_savings += (RIO + monthly_salary *portion_saved)
-        if(monthly_counter % 6 == 0):
-            monthly_salary *= (1 + semi_annual_raise)
-    return current_savings
-        
+while True:
+    try:
+        msg = input('>>>')
+        if msg == 0:
+            #判断输入是否为空 就是直接回车了
+            continue
+        #UDP不需要构成连接，直接发送即可
+        c.sendto(msg.encode('utf-8'),('127.0.0.1',25555))
+        #发送消息，其中两个参数,第一个是要发送的信息
+        #第二个是发送的ip地址和端口，是一个元组
 
+        data,s_addr = c.recvfrom(1024)
 
-annual_salary = int(input("Enter the starting salary:​​"))
+        #c_addr是一个地址,发送消息的客户端的IP和端口的二元组
+        print('$: %s'%(data.decode('utf-8')))
+    except KeyboardInterrupt:
+        break
 
-total_cost = 1000000
-portion_down_payment = 0.25
-down_payment = portion_down_payment * total_cost
-
-head = 0
-tail = 10000
-counter = 0
-
-if(calculate(annual_salary,1) < down_payment):
-    print("It is not possible to pay the down payment in three years.")
-else:
-    while(1):   #using bisection search to find the right saving rate
-        counter += 1
-        mid = int( (head + tail) / 2 )
-        diff = calculate( annual_salary,mid/10000) - down_payment
-        
-        if( abs(diff) < 100 ):
-            break
-        elif(diff > 0):
-            tail = mid - 1 
-        else:
-            head = mid + 1
-    print("Best savings rate:​ %.4f"%(mid/10000))
-    print("Steps in bisection search:%d"%counter)
-
-
-
+c.close()
 
