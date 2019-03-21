@@ -10,8 +10,15 @@ print("Server is ready to work")
 
 while(True):
     (connectionSocket,addr) = serverSocket.accept()
-    sentence = connectionSocket.recv(1024).decode()
-    connectionSocket.send(sentence.encode())
+    while(True):
+        sentence = connectionSocket.recv(1024).decode()
+        if(len(sentence) == 0):
+            print("disable to connect")
+            break;
+
+        print("client:",sentence)        
+        connectionSocket.send(sentence.encode())
+serverSocket.close()
 
 
 
