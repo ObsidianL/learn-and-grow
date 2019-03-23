@@ -1,29 +1,32 @@
 #server
 from socket import *
-
+import threading
 serverPort = 8080
 serverSocket = socket(AF_INET,SOCK_STREAM)
 
-serverSocket.bind(('',serverPort))
-serverSocket.listen(2)
+serverSocket.bind(('',serverPort))  #将套接字绑定到地址。address地址的格式取决于地址族。在AF_INET下，以元组（host,port）的形式表示地址。
+serverSocket.listen(3)  #开始监听传入连接。backlog指定在拒绝连接之前，可以挂起的最大连接数量。
+                        #backlog等于5，表示内核已经接到了连接请求，但服务器还没有调用accept进行处理的连接个数最大为5
 print("Server is ready to work")
 
 while(True):
-    (connectionSocket,addr) = serverSocket.accept()
+    (conn,addr) = serverSocket.accept()#接受连接并返回（conn,address）,其中conn是新的套接字对象，可以用来接收和发送数据。address是连接客户端的地址。
     while(True):
-        sentence = connectionSocket.recv(1024).decode()
+        sentence = conn.recv(1024).decode() #　接受套接字的数据。数据以字符串形式返回，bufsize指定最多可以接收的数量。flag提供有关消息的其他信息，通常可以忽略。
         if(len(sentence) == 0):
             print("disable to connect")
-            break;
-
-        print("client:",sentence)        
-        connectionSocket.send(sentence.encode())
-serverSocket.close()
+            break
+        print("client:",sentence)
+        conn.send(sentence.encode())
+#serverSocket.close()
 
 
 
 #client
 from socket import *
+import threading
+import os
+flag = 0
 
 serverName = '172.26.94.147'
 serverPort = 8080
@@ -31,16 +34,51 @@ serverPort = 8080
 clientSocket = socket(AF_INET, SOCK_STREAM)
 clientSocket.connect((serverName, serverPort))
 
+def request(clientSocket):
+    while(True):
+        reqt = input()
+        if(len(reqt) == 0):
+            continue
+        elif(reqt == "exit"):
+            global flag
+            flag = 1
+            os._exit(0)
 
-while(True):
-    sententce = input("please enter the command:")
-    if(len(sententce) == 0):
-        continue
-    if(sententce =="exit"):
-        break;
-    clientSocket.send(sententce.encode())
-    modifiedSentence = clientSocket.recv(1024)
-    print("Frome server:",modifiedSentence.decode())
-clientSocket.close()
+        clientSocket.send(reqt.encode())
+def recv(clientSocket):
+    while(True):
+        reps = clientSocket.recv(1024)
+        if(len(reps) == 0):
+            continue
+        elif(reps == "disc"):
+            global flag
+            flag = 1
+            os._exit(0)
+
+        print("From server:",reps.decode())
+
+def control(clientSocket):
+    global flag
+    if(flag):
+        clientSocket.close()
+        os._exit(0)
+
+req = threading.Thread(target = request,args = (clientSocket,))
+req.start()
+rep = threading.Thread(target = recv,args = (clientSocket,))
+rep.start()
+control = threading.Thread(target= control,args = (clientSocket,))
+control.start()
+
+"""
+    command = sententce[0:4]
+    content = sententce[5:]
+
+    if(command =="exit"):
+        break
+    elif(command == "upld"):
+
+    elif(command == "dwld"):
+"""
 
 
